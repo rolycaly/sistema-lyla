@@ -1,0 +1,6 @@
+{
+  "name": "SISTEMA LYLA - Gestión Comercial y Financiera",
+  "description": "Sistema de gestión comercial, inventario, ventas, compras de mercadería, control de gastos y estados de resultados para tienda de moda y accesorios en Santa Cruz de la Sierra, Bolivia.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
