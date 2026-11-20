@@ -27,24 +27,19 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// Inicializar conexión a MySQL
-initDb();
-
-// Iniciar procesamiento en segundo plano de reservas vencidas (cada 60 segundos)
-setInterval(async () => {
-  try {
-    await processExpiredReservations();
-  } catch (err) {
-    console.error('Error en tarea programada de vencimientos:', err);
-  }
-}, 60000);
-
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // =====================================================================
 // API DE ESTADO Y CONECTIVIDAD
 // =====================================================================
+app.get('/api/health', (_req: Request, res: Response) => {
+  if (!isDbConnected()) {
+    return res.status(503).json({ status: 'unavailable', database: 'disconnected', error: getLastError() });
+  }
+  return res.status(200).json({ status: 'ok', database: 'connected' });
+});
+
 app.get('/api/status', async (_req: Request, res: Response) => {
   const connected = isDbConnected();
   const error = getLastError();
@@ -178,6 +173,21 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // INTEGRACIÓN CON VITE (DEV) Y ARCHIVOS ESTÁTICOS (PRODUCCIÓN)
 // =====================================================================
 async function startServer() {
+  const dbReady = await initDb();
+  if (!dbReady && process.env.NODE_ENV === 'production') {
+    throw new Error(`MySQL is required in production. ${getLastError() || ''}`);
+  }
+
+  if (dbReady) {
+    setInterval(async () => {
+      try {
+        await processExpiredReservations();
+      } catch (err) {
+        console.error('Error en tarea programada de vencimientos:', err);
+      }
+    }, 60000);
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -198,4 +208,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('[SISTEMA LYLA] No se pudo iniciar el servidor:', err);
+  process.exit(1);
+});
